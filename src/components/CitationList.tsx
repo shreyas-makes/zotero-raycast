@@ -77,29 +77,6 @@ export default function CitationList({ items = [], isLoading = false, error = nu
     return `${authorString} (${year}). ${title}${publication}.`;
   }
 
-  function getAuthorsDisplay(item: ZoteroItem): string {
-    if (!item.data || !item.data.creators || item.data.creators.length === 0) {
-      return "Unknown Author";
-    }
-    
-    const authors = item.data.creators.filter(c => c.creatorType === "author");
-    
-    if (authors.length === 0) {
-      return "Unknown Author";
-    }
-    
-    if (authors.length === 1) {
-      const author = authors[0];
-      return `${author.lastName || ""}${author.firstName ? `, ${author.firstName}` : ""}`.trim();
-    }
-    
-    if (authors.length === 2) {
-      return `${authors[0].lastName} & ${authors[1].lastName}`;
-    }
-    
-    return `${authors[0].lastName} et al.`;
-  }
-
   const filteredItems = state.searchText
     ? state.items.filter(item => {
         const title = item.data?.title?.toLowerCase() || "";
@@ -133,49 +110,51 @@ export default function CitationList({ items = [], isLoading = false, error = nu
           description={state.searchText ? "Try a different search term" : "Your library appears to be empty"}
         />
       ) : (
-        filteredItems.map((item) => (
-          <List.Item
-            key={item.key}
-            icon={getItemTypeIcon(item.data?.itemType)}
-            title={item.data?.title || "Untitled"}
-            subtitle={getAuthorsDisplay(item)}
-            accessories={[
-              { 
-                tag: { value: item.data?.date ? item.data.date.substring(0, 4) : "n.d.", color: Color.Blue },
-                tooltip: `Published: ${item.data?.date || "Unknown date"}` 
-              },
-              { 
-                icon: item.data?.publicationTitle ? Icon.Book : undefined,
-                text: item.data?.publicationTitle ? ellipsizeText(item.data.publicationTitle, 30) : undefined,
-                tooltip: "Publication"
+        filteredItems.map((item) => {
+          const bibEntry = formatBibliographyEntry(item);
+          return (
+            <List.Item
+              key={item.key}
+              icon={getItemTypeIcon(item.data?.itemType)}
+              title={bibEntry}
+              accessories={[
+                { 
+                  tag: { 
+                    value: item.data?.date ? item.data.date.substring(0, 4) : "n.d.", 
+                    color: Color.Blue 
+                  },
+                }
+              ]}
+              actions={
+                <ActionPanel>
+                  <ActionPanel.Section>
+                    <Action
+                      title="Copy Bibliography Entry"
+                      icon={Icon.TextDocument}
+                      shortcut={{ modifiers: ["cmd"], key: "b" }}
+                      onAction={() => copyToClipboard(bibEntry, "Bibliography entry copied to clipboard")}
+                    />
+                    <Action
+                      title="Copy In-Text Citation"
+                      icon={Icon.Text}
+                      shortcut={{ modifiers: ["cmd"], key: "c" }}
+                      onAction={() => {
+                        const citation = formatInTextCitation(item);
+                        copyToClipboard(citation, "Citation copied to clipboard");
+                      }}
+                    />
+                    <Action
+                      title="Copy Title Only"
+                      icon={Icon.TextDocument}
+                      shortcut={{ modifiers: ["cmd", "shift"], key: "t" }}
+                      onAction={() => copyToClipboard(item.data?.title || "Untitled", "Title copied to clipboard")}
+                    />
+                  </ActionPanel.Section>
+                </ActionPanel>
               }
-            ]}
-            actions={
-              <ActionPanel>
-                <ActionPanel.Section>
-                  <Action
-                    title="Copy APA Bibliography Entry"
-                    icon={Icon.TextDocument}
-                    shortcut={{ modifiers: ["cmd"], key: "b" }}
-                    onAction={() => {
-                      const bibliography = formatBibliographyEntry(item);
-                      copyToClipboard(bibliography, "Bibliography entry copied to clipboard");
-                    }}
-                  />
-                  <Action
-                    title="Copy In-Text Citation"
-                    icon={Icon.Text}
-                    shortcut={{ modifiers: ["cmd"], key: "c" }}
-                    onAction={() => {
-                      const citation = formatInTextCitation(item);
-                      copyToClipboard(citation, "Citation copied to clipboard");
-                    }}
-                  />
-                </ActionPanel.Section>
-              </ActionPanel>
-            }
-          />
-        ))
+            />
+          );
+        })
       )}
     </List>
   );
@@ -188,9 +167,9 @@ function getItemTypeIcon(itemType?: string): Icon {
     case "journalarticle":
       return Icon.Document;
     case "conferencepaper":
-      return Icon.Presentation;
+      return Icon.Note;
     case "thesis":
-      return Icon.GraduationCap;
+      return Icon.Star;
     case "webpage":
       return Icon.Globe;
     default:
