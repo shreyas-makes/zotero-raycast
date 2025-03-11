@@ -1,3 +1,3 @@
-export * from './ZoteroService';
-export * from './errors';
-export * from './utils'; 
+export * from "./ZoteroService";
+export * from "./errors";
+export * from "./utils";

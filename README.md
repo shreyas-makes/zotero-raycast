@@ -1,48 +1,74 @@
-# Zotero Researcher Raycast Extension
+# Zotero Researcher for Raycast
 
-A Raycast extension that helps users quickly access and cite references from their local Zotero library.
+A Raycast extension that connects to your local Zotero database, making it easy to access your research library without leaving your workflow.
 
 ## Features
 
-- Connect directly to your local Zotero database without API keys
-- Browse your complete Zotero library including:
-  - Full bibliographic information (title, authors, publication date)
-  - Publication sources and journal titles
-  - Item types (journal articles, books, book chapters, etc.)
-- View collections and their hierarchies with parent-child relationships
-- Search for specific items across your library by title, author, or other metadata
-- Filter items by collection to narrow down your research materials
-- Read-only access to ensure your Zotero database remains unchanged
-- Automatic detection of your Zotero database location (~/Zotero/zotero.sqlite)
-
-## Coming Soon
-
-- Insert citations in various formats
-- Quick copy of formatted references
-- Support for different citation styles
+- 📚 Browse your Zotero collections and items directly from Raycast
+- 🔍 Search across your entire Zotero library
+- 📋 Copy citations in various formats with a single click
+- 💻 Works with your local Zotero database - no API key required
 
 ## Requirements
 
-- Raycast v1.36.0 or higher
-- Zotero installed on your machine with a local database (typically in ~/Zotero/zotero.sqlite)
-- Node.js and npm for development
+- [Raycast](https://raycast.com/) installed
+- [Zotero](https://www.zotero.org/download/) desktop application installed
+- macOS 10.15 or later
 
-## Development
+## Installation
+
+### From Raycast Store
+
+1. Open Raycast
+2. Search for "Store"
+3. Search for "Zotero Researcher"
+4. Click "Install"
+
+### Manual Installation (Development)
 
 1. Clone this repository
 2. Install dependencies: `npm install`
-3. Install required packages:
-   ```
-   npm install sqlite sqlite3
-   ```
-4. Run the development server: `npm run dev`
+3. Generate the command icon: `npm run generate-icons`
+4. Build the extension: `npm run build`
+5. Open Raycast and run the "Import Extension" command
+6. Select the `dist` directory from this project
 
-## How It Works
+## Usage
 
-This extension connects directly to your local Zotero SQLite database, allowing you to browse and search your Zotero library without needing API credentials. The extension automatically locates your Zotero database in the default location.
+1. Open Raycast (Option+Space)
+2. Type "Zotero" to find the extension
+3. Press Enter to open the extension
+4. Browse your Zotero collections and items
+5. Use the available actions to copy citations or view details
+
+## Privacy
+
+This extension only connects to your local Zotero database and does not send any data to external servers. Your research library remains private and secure on your own computer.
 
 ## Troubleshooting
 
-If the extension cannot find your Zotero database:
-- Make sure Zotero is installed and has been run at least once
-- Check that the database exists at `~/Zotero/zotero.sqlite` 
+- **Extension doesn't show my Zotero library**: Make sure Zotero is installed and has been run at least once to create the database.
+- **Missing collections or items**: The extension reads your Zotero SQLite database directly. Make sure Zotero is closed or not actively writing to the database when using the extension.
+- **Performance issues**: If you have a very large Zotero library, initial loading might take a moment.
+
+## Development
+
+This extension is built with:
+- [Raycast API](https://developers.raycast.com/)
+- [TypeScript](https://www.typescriptlang.org/)
+- [SQLite](https://www.sqlite.org/) for database access
+
+To contribute:
+1. Fork the repository
+2. Make your changes
+3. Run `npm run lint` and `npm run format` to ensure code quality
+4. Submit a pull request
+
+## License
+
+MIT
+
+## Credits
+
+- Zotero is a trademark of the [Corporation for Digital Scholarship](https://digitalscholarship.org/)
+- Icon created using the Raycast icon guidelines 

@@ -41,7 +41,9 @@
     }
   ],
   "dependencies": {
-    "@raycast/api": "^1.66.0"
+    "@raycast/api": "^1.66.0",
+    "sqlite": "^5.0.1",
+    "sqlite3": "^5.1.6"
   },
   "devDependencies": {
     "@raycast/eslint-config": "^1.0.6",
@@ -49,14 +51,18 @@
     "@types/react": "^18.2.48",
     "eslint": "^8.56.0",
     "prettier": "^3.1.1",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "canvas": "^2.11.2"
   },
   "scripts": {
     "build": "ray build -e dist",
     "dev": "ray develop",
     "fix-lint": "ray lint --fix",
     "lint": "ray lint",
-    "publish": "npx @raycast/api@latest publish"
+    "publish": "npx @raycast/api@latest publish",
+    "generate-icons": "node assets/command-icon.js",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,md}\"",
+    "prepack": "npm run generate-icons && npm run format"
   },
   "os": [
     "darwin"

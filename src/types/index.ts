@@ -3,10 +3,10 @@
  */
 
 // Zotero Items and Creators
-export * from './zoteroItems';
+export * from "./zoteroItems";
 
 // API Responses and Interfaces
-export * from './zoteroApi';
+export * from "./zoteroApi";
 
 // Citation Formats
-export * from './citation'; 
+export * from "./citation";

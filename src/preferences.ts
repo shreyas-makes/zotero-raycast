@@ -31,22 +31,30 @@ export function isValidUserId(userId: string): boolean {
  */
 export function getZoteroPreferences(): Preferences {
   const preferences = getPreferenceValues<Preferences>();
-  
+
   if (!preferences.apiKey) {
-    throw new Error("Zotero API key is required. Get one from https://www.zotero.org/settings/keys");
+    throw new Error(
+      "Zotero API key is required. Get one from https://www.zotero.org/settings/keys",
+    );
   }
 
   if (!isValidApiKey(preferences.apiKey)) {
-    throw new Error("Invalid Zotero API key. It should be 24 characters long and contain only letters and numbers.");
+    throw new Error(
+      "Invalid Zotero API key. It should be 24 characters long and contain only letters and numbers.",
+    );
   }
-  
+
   if (!preferences.userId) {
-    throw new Error("Zotero user ID is required. Find it in your profile URL (e.g., https://www.zotero.org/johndoe -> 'johndoe' is your user ID)");
+    throw new Error(
+      "Zotero user ID is required. Find it in your profile URL (e.g., https://www.zotero.org/johndoe -> 'johndoe' is your user ID)",
+    );
   }
 
   if (!isValidUserId(preferences.userId)) {
-    throw new Error("Invalid Zotero user ID. It should contain only letters, numbers, underscores, and hyphens.");
+    throw new Error(
+      "Invalid Zotero user ID. It should contain only letters, numbers, underscores, and hyphens.",
+    );
   }
-  
+
   return preferences;
-} 
+}

@@ -36,10 +36,10 @@ export interface ZoteroItemData {
   date?: string;
   dateAdded?: string;
   dateModified?: string;
-  tags?: Array<{tag: string; type?: number}>;
+  tags?: Array<{ tag: string; type?: number }>;
   collections?: string[];
   relations?: Record<string, string[]>;
-  
+
   // Journal article fields
   publicationTitle?: string;
   volume?: string;
@@ -48,20 +48,20 @@ export interface ZoteroItemData {
   journalAbbreviation?: string;
   DOI?: string;
   ISSN?: string;
-  
+
   // Book fields
   publisher?: string;
   place?: string;
   ISBN?: string;
   numPages?: string;
-  
+
   // Common fields
   url?: string;
   accessDate?: string;
   language?: string;
   rights?: string;
   extra?: string;
-  
+
   // File attachment fields
   contentType?: string;
   filename?: string;
@@ -83,14 +83,14 @@ export interface ZoteroCreator {
  * Common properties shared by all Zotero items
  */
 export interface ZoteroItemBase {
-  key: string;           // Unique identifier in library
-  version: number;       // Version of the item
-  itemType: string;      // Type of item (e.g., "journalArticle", "book")
-  tags: Array<{tag: string; type?: number}>;
+  key: string; // Unique identifier in library
+  version: number; // Version of the item
+  itemType: string; // Type of item (e.g., "journalArticle", "book")
+  tags: Array<{ tag: string; type?: number }>;
   collections: string[]; // Array of collection keys
   relations: Record<string, string[]>;
-  dateAdded: string;     // ISO 8601 format
-  dateModified: string;  // ISO 8601 format
+  dateAdded: string; // ISO 8601 format
+  dateModified: string; // ISO 8601 format
   creators: ZoteroCreator[];
 }
 
@@ -98,14 +98,14 @@ export interface ZoteroItemBase {
  * Properties specific to a journal article
  */
 export interface ZoteroJournalArticle extends ZoteroItemBase {
-  itemType: 'journalArticle';
+  itemType: "journalArticle";
   title: string;
   abstractNote?: string;
-  publicationTitle: string;  // Journal name
+  publicationTitle: string; // Journal name
   volume?: string;
   issue?: string;
   pages?: string;
-  date?: string;             // Publication date
+  date?: string; // Publication date
   series?: string;
   seriesTitle?: string;
   seriesText?: string;
@@ -128,7 +128,7 @@ export interface ZoteroJournalArticle extends ZoteroItemBase {
  * Properties specific to a book
  */
 export interface ZoteroBook extends ZoteroItemBase {
-  itemType: 'book';
+  itemType: "book";
   title: string;
   abstractNote?: string;
   series?: string;
@@ -157,9 +157,9 @@ export interface ZoteroBook extends ZoteroItemBase {
  * Properties specific to a book chapter
  */
 export interface ZoteroBookChapter extends ZoteroItemBase {
-  itemType: 'bookSection';
-  title: string;            // Chapter title
-  bookTitle: string;        // Book title
+  itemType: "bookSection";
+  title: string; // Chapter title
+  bookTitle: string; // Book title
   abstractNote?: string;
   series?: string;
   seriesNumber?: string;
@@ -187,7 +187,7 @@ export interface ZoteroBookChapter extends ZoteroItemBase {
  * Properties specific to a conference paper
  */
 export interface ZoteroConferencePaper extends ZoteroItemBase {
-  itemType: 'conferencePaper';
+  itemType: "conferencePaper";
   title: string;
   abstractNote?: string;
   conferenceName: string;
@@ -215,10 +215,10 @@ export interface ZoteroConferencePaper extends ZoteroItemBase {
  * Properties specific to a thesis
  */
 export interface ZoteroThesis extends ZoteroItemBase {
-  itemType: 'thesis';
+  itemType: "thesis";
   title: string;
   abstractNote?: string;
-  thesisType?: string;      // e.g., "PhD dissertation", "Master's thesis"
+  thesisType?: string; // e.g., "PhD dissertation", "Master's thesis"
   university: string;
   place?: string;
   date?: string;
@@ -239,7 +239,7 @@ export interface ZoteroThesis extends ZoteroItemBase {
  * Properties specific to a webpage
  */
 export interface ZoteroWebpage extends ZoteroItemBase {
-  itemType: 'webpage';
+  itemType: "webpage";
   title: string;
   abstractNote?: string;
   websiteTitle?: string;
@@ -251,4 +251,4 @@ export interface ZoteroWebpage extends ZoteroItemBase {
   language?: string;
   rights?: string;
   extra?: string;
-} 
+}

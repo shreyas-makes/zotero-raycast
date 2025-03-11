@@ -4,32 +4,32 @@
 
 export class ZoteroApiError extends Error {
   statusCode: number;
-  
+
   constructor(message: string, statusCode: number = 500) {
     super(message);
-    this.name = 'ZoteroApiError';
+    this.name = "ZoteroApiError";
     this.statusCode = statusCode;
   }
 }
 
 export class ZoteroAuthenticationError extends ZoteroApiError {
-  constructor(message: string = 'Authentication failed. Check your API key.') {
+  constructor(message: string = "Authentication failed. Check your API key.") {
     super(message, 401);
-    this.name = 'ZoteroAuthenticationError';
+    this.name = "ZoteroAuthenticationError";
   }
 }
 
 export class ZoteroRateLimitError extends ZoteroApiError {
-  constructor(message: string = 'Rate limit exceeded. Please try again later.') {
+  constructor(message: string = "Rate limit exceeded. Please try again later.") {
     super(message, 429);
-    this.name = 'ZoteroRateLimitError';
+    this.name = "ZoteroRateLimitError";
   }
 }
 
 export class ZoteroNotFoundError extends ZoteroApiError {
-  constructor(message: string = 'Resource not found.') {
+  constructor(message: string = "Resource not found.") {
     super(message, 404);
-    this.name = 'ZoteroNotFoundError';
+    this.name = "ZoteroNotFoundError";
   }
 }
 
@@ -45,6 +45,9 @@ export function handleZoteroApiError(statusCode: number, message?: string): neve
     case 429:
       throw new ZoteroRateLimitError(message);
     default:
-      throw new ZoteroApiError(message || `API request failed with status ${statusCode}`, statusCode);
+      throw new ZoteroApiError(
+        message || `API request failed with status ${statusCode}`,
+        statusCode,
+      );
   }
-} 
+}

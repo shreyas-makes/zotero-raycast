@@ -1,7 +1,7 @@
-import { homedir } from 'os';
-import { join } from 'path';
-import { open, Database } from 'sqlite';
-import sqlite3 from 'sqlite3';
+import { homedir } from "os";
+import { join } from "path";
+import { open, Database } from "sqlite";
+import sqlite3 from "sqlite3";
 
 // Define the missing types
 export interface ZoteroCreator {
@@ -31,7 +31,7 @@ export interface ZoteroItem {
     createdByUser: boolean;
     numChildren: number;
   };
-  links: Record<string, any>;
+  links: Record<string, string>;
 }
 
 export interface ZoteroCollection {
@@ -41,13 +41,13 @@ export interface ZoteroCollection {
     key: string;
     name: string;
     parentCollection: string | boolean;
-    [key: string]: any;
+    [key: string]: string | boolean;
   };
   meta: {
-    [key: string]: any;
+    [key: string]: unknown;
   };
   links: {
-    [key: string]: any;
+    [key: string]: string;
   };
 }
 
@@ -79,7 +79,7 @@ class ZoteroLocalDatabase implements LocalZoteroDatabase {
   private db: Database | null = null;
 
   constructor() {
-    this.dbPath = join(homedir(), 'Zotero', 'zotero.sqlite');
+    this.dbPath = join(homedir(), "Zotero", "zotero.sqlite");
   }
 
   private async initialize(): Promise<boolean> {
@@ -88,29 +88,29 @@ class ZoteroLocalDatabase implements LocalZoteroDatabase {
     }
 
     try {
-      console.log('Opening database at:', this.dbPath);
-      
+      console.log("Opening database at:", this.dbPath);
+
       // Open the database with promise-based API
       this.db = await open({
         filename: this.dbPath,
         driver: sqlite3.Database,
-        mode: sqlite3.OPEN_READONLY
+        mode: sqlite3.OPEN_READONLY,
       });
-      
-      console.log('Successfully connected to Zotero database');
+
+      console.log("Successfully connected to Zotero database");
       return true;
     } catch (error) {
-      console.error('Failed to connect to local Zotero database:', error);
+      console.error("Failed to connect to local Zotero database:", error);
       return false;
     }
   }
 
   async getItems(): Promise<ZoteroItem[]> {
-    if (!await this.initialize()) return [];
-    
+    if (!(await this.initialize())) return [];
+
     try {
-      if (!this.db) throw new Error('Database not initialized');
-      
+      if (!this.db) throw new Error("Database not initialized");
+
       const items = await this.db.all<DatabaseItem[]>(`
         SELECT i.itemID, i.key, it.typeName as itemType, 
                id.valueText as title,
@@ -133,20 +133,22 @@ class ZoteroLocalDatabase implements LocalZoteroDatabase {
         ORDER BY id.valueText
       `);
 
-      return items.map(item => ({
+      return items.map((item: DatabaseItem) => ({
         key: item.key,
         version: 0,
         data: {
           key: item.key,
           itemType: item.itemType,
-          title: item.title || 'Untitled',
-          creators: item.creators ? item.creators.split('; ').map((creator: string) => {
-            if (!creator) return { creatorType: 'author' };
-            const [lastName, firstName] = creator.split(', ');
-            return { lastName, firstName, creatorType: 'author' };
-          }) : [],
+          title: item.title || "Untitled",
+          creators: item.creators
+            ? item.creators.split("; ").map((creator: string) => {
+                if (!creator) return { creatorType: "author" };
+                const [lastName, firstName] = creator.split(", ");
+                return { lastName, firstName, creatorType: "author" };
+              })
+            : [],
           date: item.date,
-          publicationTitle: item.publicationTitle
+          publicationTitle: item.publicationTitle,
         },
         meta: {
           createdByUser: true,
@@ -155,17 +157,17 @@ class ZoteroLocalDatabase implements LocalZoteroDatabase {
         links: {},
       }));
     } catch (error) {
-      console.error('Error fetching items:', error);
+      console.error("Error fetching items:", error);
       return [];
     }
   }
 
   async getCollections(): Promise<ZoteroCollection[]> {
-    if (!await this.initialize()) return [];
-    
+    if (!(await this.initialize())) return [];
+
     try {
-      if (!this.db) throw new Error('Database not initialized');
-      
+      if (!this.db) throw new Error("Database not initialized");
+
       const collections = await this.db.all<DatabaseCollection[]>(`
         SELECT collectionID, key, collectionName as name, parentCollectionID
         FROM collections
@@ -173,31 +175,35 @@ class ZoteroLocalDatabase implements LocalZoteroDatabase {
         ORDER BY name
       `);
 
-      return collections.map(collection => ({
+      return collections.map((collection: DatabaseCollection) => ({
         key: collection.key,
         version: 0,
         data: {
           key: collection.key,
           name: collection.name,
-          parentCollection: collection.parentCollectionID ? 
-            collections.find(c => c.collectionID === collection.parentCollectionID)?.key || false : false,
+          parentCollection: collection.parentCollectionID
+            ? collections.find(
+                (c: DatabaseCollection) => c.collectionID === collection.parentCollectionID,
+              )?.key || false
+            : false,
         },
         meta: {},
         links: {},
       }));
     } catch (error) {
-      console.error('Error fetching collections:', error);
+      console.error("Error fetching collections:", error);
       return [];
     }
   }
 
   async getItemsByCollection(collectionKey: string): Promise<ZoteroItem[]> {
-    if (!await this.initialize()) return [];
-    
+    if (!(await this.initialize())) return [];
+
     try {
-      if (!this.db) throw new Error('Database not initialized');
-      
-      const items = await this.db.all<DatabaseItem[]>(`
+      if (!this.db) throw new Error("Database not initialized");
+
+      const items = await this.db.all<DatabaseItem[]>(
+        `
         SELECT i.itemID, i.key, it.typeName as itemType, 
                id.valueText as title,
                GROUP_CONCAT(c.lastName || ', ' || c.firstName, '; ') as creators,
@@ -220,22 +226,26 @@ class ZoteroLocalDatabase implements LocalZoteroDatabase {
         AND it.typeName NOT IN ('attachment', 'note')
         GROUP BY i.itemID
         ORDER BY id.valueText
-      `, [collectionKey]);
+      `,
+        [collectionKey],
+      );
 
-      return items.map(item => ({
+      return items.map((item: DatabaseItem) => ({
         key: item.key,
         version: 0,
         data: {
           key: item.key,
           itemType: item.itemType,
-          title: item.title || 'Untitled',
-          creators: item.creators ? item.creators.split('; ').map((creator: string) => {
-            if (!creator) return { creatorType: 'author' };
-            const [lastName, firstName] = creator.split(', ');
-            return { lastName, firstName, creatorType: 'author' };
-          }) : [],
+          title: item.title || "Untitled",
+          creators: item.creators
+            ? item.creators.split("; ").map((creator: string) => {
+                if (!creator) return { creatorType: "author" };
+                const [lastName, firstName] = creator.split(", ");
+                return { lastName, firstName, creatorType: "author" };
+              })
+            : [],
           date: item.date,
-          publicationTitle: item.publicationTitle
+          publicationTitle: item.publicationTitle,
         },
         meta: {
           createdByUser: true,
@@ -244,7 +254,7 @@ class ZoteroLocalDatabase implements LocalZoteroDatabase {
         links: {},
       }));
     } catch (error) {
-      console.error('Error fetching items by collection:', error);
+      console.error("Error fetching items by collection:", error);
       return [];
     }
   }
@@ -254,16 +264,13 @@ class ZoteroLocalDatabase implements LocalZoteroDatabase {
 export default class Zotero {
   private apiKey: string;
   private userId: string;
-  private useLocalDatabase: boolean;
   private localDatabase: ZoteroLocalDatabase | null = null;
 
-  constructor(apiKey?: string, userId?: string, useLocalDatabase = false) {
-    this.apiKey = apiKey || '';
-    this.userId = userId || '';
-    // FORCE local database mode regardless of input
-    this.useLocalDatabase = true;
-    
-    console.log('Zotero initialized - FORCING local database mode');
+  constructor(apiKey?: string, userId?: string) {
+    this.apiKey = apiKey || "";
+    this.userId = userId || "";
+    // FORCE local database mode
+    console.log("Zotero initialized - FORCING local database mode");
     this.localDatabase = new ZoteroLocalDatabase();
   }
 
@@ -295,4 +302,4 @@ export default class Zotero {
   }
 }
 
-// ... existing code ... 
+// ... existing code ...

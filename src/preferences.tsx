@@ -13,7 +13,7 @@ export function getZoteroPreferences(): ZoteroPreferences {
   return {
     apiKey: prefs.apiKey || "",
     userId: prefs.userId || "",
-    useLocalDatabase: prefs.useLocalDatabase || false
+    useLocalDatabase: prefs.useLocalDatabase || false,
   };
 }
 
@@ -21,7 +21,7 @@ export default function Command() {
   const [preferences, setPreferences] = useState({
     apiKey: "",
     userId: "",
-    useLocalDatabase: false
+    useLocalDatabase: false,
   });
 
   useEffect(() => {
@@ -30,23 +30,23 @@ export default function Command() {
         const storedApiKey = await LocalStorage.getItem<string>("apiKey");
         const storedUserId = await LocalStorage.getItem<string>("userId");
         const storedUseLocalDatabase = await LocalStorage.getItem<string>("useLocalDatabase");
-        
+
         setPreferences({
           apiKey: storedApiKey || "",
           userId: storedUserId || "",
-          useLocalDatabase: storedUseLocalDatabase === "true"
+          useLocalDatabase: storedUseLocalDatabase === "true",
         });
       } catch (error) {
         console.error("Failed to load preferences:", error);
       }
     }
-    
+
     loadPreferences();
   }, []);
 
   const updatePreference = async (key: string, value: string | boolean) => {
     await LocalStorage.setItem(key, value.toString());
-    setPreferences(prev => ({ ...prev, [key]: value }));
+    setPreferences((prev) => ({ ...prev, [key]: value }));
   };
 
   return (
@@ -65,14 +65,14 @@ export default function Command() {
         value={preferences.userId}
         onChange={(newValue) => updatePreference("userId", newValue)}
       />
-      <Form.Checkbox 
-        id="useLocalDatabase" 
-        label="Use Local Zotero Database" 
-        value={preferences.useLocalDatabase} 
+      <Form.Checkbox
+        id="useLocalDatabase"
+        label="Use Local Zotero Database"
+        value={preferences.useLocalDatabase}
         onChange={(newValue) => updatePreference("useLocalDatabase", newValue)}
       />
       <Form.Description text="Connect directly to local Zotero database instead of using the API. Requires Zotero desktop to be installed." />
       <Form.Separator />
     </Form>
   );
-} 
+}

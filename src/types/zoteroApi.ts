@@ -1,7 +1,7 @@
 /**
  * Type definitions for Zotero API responses
  */
-import { ZoteroItem } from './zoteroItems';
+import { ZoteroItem } from "./zoteroItems";
 
 /**
  * Pagination links returned in Zotero API responses
@@ -45,6 +45,7 @@ export interface ZoteroApiMeta {
   numResults?: number;
   start?: number;
   apiVersion?: number;
+  [key: string]: number | string | boolean | undefined;
 }
 
 /**
@@ -64,7 +65,7 @@ export interface ZoteroItemsResponse {
   links?: ZoteroApiLinks;
   meta?: {
     numResults?: number;
-    [key: string]: any;
+    [key: string]: number | string | boolean | undefined;
   };
 }
 
@@ -99,18 +100,18 @@ export interface ZoteroCollection {
  * Search parameters for Zotero API
  */
 export interface ZoteroSearchParams {
-  q?: string;                // General search query
-  tag?: string | string[];   // Filter by tag(s)
-  collection?: string;       // Filter by collection key
-  itemType?: string;         // Filter by item type
-  qmode?: 'titleCreatorYear' | 'everything'; // Search mode
-  sort?: string;             // Sort order
-  direction?: 'asc' | 'desc'; // Sort direction
-  limit?: number;            // Number of results to return
-  start?: number;            // Starting position for results
-  include?: ('data' | 'bib' | 'citation' | 'meta' | 'coins' | 'bibtex' | 'biblatex' | 'ris')[];
-  style?: string;            // Citation style
-  linkwrap?: 0 | 1;          // Whether to wrap bibliography in HTML links
+  q?: string; // General search query
+  tag?: string | string[]; // Filter by tag(s)
+  collection?: string; // Filter by collection key
+  itemType?: string; // Filter by item type
+  qmode?: "titleCreatorYear" | "everything"; // Search mode
+  sort?: string; // Sort order
+  direction?: "asc" | "desc"; // Sort direction
+  limit?: number; // Number of results to return
+  start?: number; // Starting position for results
+  include?: ("data" | "bib" | "citation" | "meta" | "coins" | "bibtex" | "biblatex" | "ris")[];
+  style?: string; // Citation style
+  linkwrap?: 0 | 1; // Whether to wrap bibliography in HTML links
 }
 
 /**
@@ -121,4 +122,11 @@ export interface ZoteroApiError {
     code: number;
     message: string;
   };
-} 
+}
+
+/**
+ * Options for Zotero API requests
+ */
+export interface ZoteroApiOptions {
+  params?: Record<string, string | number | boolean>;
+}

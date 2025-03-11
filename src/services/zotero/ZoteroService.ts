@@ -1,9 +1,19 @@
-import { ZoteroItem } from '../../types/zoteroItems';
-import { ZoteroApiError, ZoteroAuthenticationError, ZoteroRateLimitError, ZoteroNotFoundError } from './errors';
-import { ZoteroSearchParams, ZoteroItemsResponse, ZoteroApiLinks } from '../../types/zoteroApi';
-import { buildUserLibraryUrl, buildGroupLibraryUrl, buildSearchQueryString, ZOTERO_API_BASE_URL } from './utils';
-import * as https from 'https';
-import { URL } from 'url';
+import { ZoteroItem } from "../../types/zoteroItems";
+import {
+  ZoteroApiError,
+  ZoteroAuthenticationError,
+  ZoteroRateLimitError,
+  ZoteroNotFoundError,
+} from "./errors";
+import { ZoteroSearchParams, ZoteroItemsResponse, ZoteroApiLinks } from "../../types/zoteroApi";
+import {
+  buildUserLibraryUrl,
+  buildGroupLibraryUrl,
+  buildSearchQueryString,
+  ZOTERO_API_BASE_URL,
+} from "./utils";
+import * as https from "https";
+import { URL } from "url";
 
 /**
  * Simple HTTP client for making requests in Node.js environment
@@ -11,11 +21,14 @@ import { URL } from 'url';
  * @param options Request options
  * @returns Promise with response data
  */
-function fetchWithNode(url: string, options: { method?: string; headers?: Record<string, string>; body?: string } = {}): Promise<{ 
-  status: number; 
-  statusText: string; 
-  text: () => Promise<string>; 
-  json: () => Promise<any>; 
+function fetchWithNode(
+  url: string,
+  options: { method?: string; headers?: Record<string, string>; body?: string } = {},
+): Promise<{
+  status: number;
+  statusText: string;
+  text: () => Promise<string>;
+  json: () => Promise<unknown>;
   headers: Record<string, string>;
   ok: boolean;
 }> {
@@ -24,53 +37,57 @@ function fetchWithNode(url: string, options: { method?: string; headers?: Record
     const requestOptions = {
       hostname: parsedUrl.hostname,
       path: parsedUrl.pathname + parsedUrl.search,
-      method: options.method || 'GET',
-      headers: options.headers || {}
+      method: options.method || "GET",
+      headers: options.headers || {},
     };
 
-    console.log(`Making HTTP request to ${parsedUrl.hostname}${parsedUrl.pathname}${parsedUrl.search}`);
-    
+    console.log(
+      `Making HTTP request to ${parsedUrl.hostname}${parsedUrl.pathname}${parsedUrl.search}`,
+    );
+
     const req = https.request(requestOptions, (res) => {
-      let data = '';
-      
-      res.on('data', (chunk) => {
+      let data = "";
+
+      res.on("data", (chunk) => {
         data += chunk;
       });
-      
-      res.on('end', () => {
+
+      res.on("end", () => {
         const responseHeaders: Record<string, string> = {};
         for (const [key, value] of Object.entries(res.headers)) {
           if (value) {
-            responseHeaders[key] = Array.isArray(value) ? value.join(', ') : value;
+            responseHeaders[key] = Array.isArray(value) ? value.join(", ") : value;
           }
         }
-        
+
         resolve({
           status: res.statusCode || 0,
-          statusText: res.statusMessage || '',
+          statusText: res.statusMessage || "",
           text: async () => data,
           json: async () => {
             try {
               return JSON.parse(data);
             } catch (e) {
-              throw new Error(`Failed to parse JSON: ${e instanceof Error ? e.message : 'Unknown error'}`);
+              throw new Error(
+                `Failed to parse JSON: ${e instanceof Error ? e.message : "Unknown error"}`,
+              );
             }
           },
           headers: responseHeaders,
-          ok: res.statusCode !== undefined && res.statusCode >= 200 && res.statusCode < 300
+          ok: res.statusCode !== undefined && res.statusCode >= 200 && res.statusCode < 300,
         });
       });
     });
-    
-    req.on('error', (error) => {
-      console.error('HTTP request error:', error.message);
+
+    req.on("error", (error) => {
+      console.error("HTTP request error:", error.message);
       reject(error);
     });
-    
+
     if (options.body) {
       req.write(options.body);
     }
-    
+
     req.end();
   });
 }
@@ -99,7 +116,7 @@ export class ZoteroService {
   private apiKey: string;
   private userId?: string;
   private groupId?: string;
-  private isAuthenticated: boolean = false;
+  private isAuthenticated = false;
   private instanceId: string;
   private authPromise: Promise<boolean> | null = null;
 
@@ -110,17 +127,17 @@ export class ZoteroService {
   constructor(config: ZoteroServiceConfig) {
     this.instanceId = Math.random().toString(36).substring(2, 9);
     console.log(`[${this.instanceId}] Constructor called with userId: ${config.userId}`);
-    
+
     this.apiKey = config.apiKey;
     this.userId = config.userId;
     this.groupId = config.groupId;
-    
+
     if (!this.apiKey) {
-      throw new ZoteroAuthenticationError('API key is required');
+      throw new ZoteroAuthenticationError("API key is required");
     }
-    
+
     if (!this.userId && !this.groupId) {
-      throw new ZoteroApiError('Either userId or groupId must be provided');
+      throw new ZoteroApiError("Either userId or groupId must be provided");
     }
   }
 
@@ -130,14 +147,16 @@ export class ZoteroService {
    * @returns Singleton instance of ZoteroService
    */
   public static getInstance(config: ZoteroServiceConfig): ZoteroService {
-    console.log(`getInstance called with userId: ${config.userId}, current instance: ${instance ? 'exists' : 'null'}`);
-    
+    console.log(
+      `getInstance called with userId: ${config.userId}, current instance: ${instance ? "exists" : "null"}`,
+    );
+
     if (!instance) {
       console.log("Creating new ZoteroService singleton instance");
       instance = new ZoteroService(config);
     } else if (
-      instance.apiKey !== config.apiKey || 
-      instance.userId !== config.userId || 
+      instance.apiKey !== config.apiKey ||
+      instance.userId !== config.userId ||
       instance.groupId !== config.groupId
     ) {
       // If configuration changed, create a new instance
@@ -161,94 +180,114 @@ export class ZoteroService {
    * Authenticate with the Zotero API using the provided API key
    * @returns A promise that resolves when authentication is successful
    */
-  async authenticate(): Promise<boolean> {
+  public async authenticate(): Promise<boolean> {
     // If authentication is already in progress, return the existing promise
     if (this.authPromise) {
       return this.authPromise;
     }
 
     // Wrap the authentication logic in a promise
-    this.authPromise = new Promise(async (resolve, reject) => {
+    this.authPromise = new Promise((resolve, reject) => {
       try {
         if (!this.userId) {
           console.log(`[${this.instanceId}] No user ID provided`);
-          reject(new ZoteroAuthenticationError('User ID is required'));
+          reject(new ZoteroAuthenticationError("User ID is required"));
           return;
         }
 
         console.log(`[${this.instanceId}] Attempting to authenticate with user ID: ${this.userId}`);
         const url = `${ZOTERO_API_BASE_URL}/users/${this.userId}/items/top?limit=1&key=${this.apiKey}`;
-        
+
         const response = await fetchWithNode(url, {
-          method: 'GET',
+          method: "GET",
           headers: {
-            'Zotero-API-Version': '3',
-            'Content-Type': 'application/json'
-          }
+            "Zotero-API-Version": "3",
+            "Content-Type": "application/json",
+          },
         });
 
         console.log(`[${this.instanceId}] Authentication response status: ${response.status}`);
         const responseText = await response.text();
-        
+
         if (!response.ok) {
           console.log(`[${this.instanceId}] Authentication failed with status ${response.status}`);
           this.isAuthenticated = false;
-          
+
           if (response.status === 401) {
-            reject(new ZoteroAuthenticationError(
-              `Authentication failed: Invalid API key. Please verify your API key in preferences.`
-            ));
-          }
-          
-          if (response.status === 403) {
-            reject(new ZoteroAuthenticationError(
-              `Authentication failed: Insufficient permissions. Make sure "Allow library access" is enabled for your API key.`
-            ));
-          }
-          
-          if (response.status === 404) {
-            reject(new ZoteroAuthenticationError(
-              `Authentication failed: User ID ${this.userId} not found. Please verify your user ID in preferences.`
-            ));
+            reject(
+              new ZoteroAuthenticationError(
+                `Authentication failed: Invalid API key. Please verify your API key in preferences.`,
+              ),
+            );
           }
 
-          reject(new ZoteroApiError(
-            `Authentication failed (${response.status}): ${response.statusText}\nResponse: ${responseText}`
-          ));
+          if (response.status === 403) {
+            reject(
+              new ZoteroAuthenticationError(
+                `Authentication failed: Insufficient permissions. Make sure "Allow library access" is enabled for your API key.`,
+              ),
+            );
+          }
+
+          if (response.status === 404) {
+            reject(
+              new ZoteroAuthenticationError(
+                `Authentication failed: User ID ${this.userId} not found. Please verify your user ID in preferences.`,
+              ),
+            );
+          }
+
+          reject(
+            new ZoteroApiError(
+              `Authentication failed (${response.status}): ${response.statusText}\nResponse: ${responseText}`,
+            ),
+          );
         }
 
         // Try to parse the response to ensure it's valid JSON
         try {
           const data = JSON.parse(responseText);
           console.log(`[${this.instanceId}] Successfully parsed response`);
-          
+
           if (!Array.isArray(data) || data.length === 0) {
             console.log(`[${this.instanceId}] Response not a non-empty array`);
-            reject(new Error('Expected non-empty array response'));
+            reject(new Error("Expected non-empty array response"));
           }
-          
+
           // Verify the response contains the expected user ID
           const firstItem = data[0];
           if (!firstItem.library || firstItem.library.id !== parseInt(this.userId)) {
             console.log(`[${this.instanceId}] User ID mismatch in response`);
-            reject(new Error('Response user ID does not match'));
+            reject(new Error("Response user ID does not match"));
           }
         } catch (error: unknown) {
-          console.log(`[${this.instanceId}] Error parsing response: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          console.log(
+            `[${this.instanceId}] Error parsing response: ${error instanceof Error ? error.message : "Unknown error"}`,
+          );
           this.isAuthenticated = false;
-          reject(new ZoteroApiError(`Invalid response from Zotero API: ${error instanceof Error ? error.message : 'Unknown error'}`));
+          reject(
+            new ZoteroApiError(
+              `Invalid response from Zotero API: ${error instanceof Error ? error.message : "Unknown error"}`,
+            ),
+          );
         }
 
         this.isAuthenticated = true;
         console.log(`[${this.instanceId}] Authentication successful!`);
         resolve(true);
       } catch (error: unknown) {
-        console.log(`[${this.instanceId}] Authentication error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        console.log(
+          `[${this.instanceId}] Authentication error: ${error instanceof Error ? error.message : "Unknown error"}`,
+        );
         this.isAuthenticated = false;
         if (error instanceof ZoteroApiError) {
           reject(error);
         }
-        reject(new ZoteroApiError(`Authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`));
+        reject(
+          new ZoteroApiError(
+            `Authentication failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+          ),
+        );
       } finally {
         this.authPromise = null;
       }
@@ -262,80 +301,81 @@ export class ZoteroService {
    * @param params Optional search parameters including pagination
    * @returns A promise that resolves to an array of Zotero items
    */
-  async getUserLibrary(params: ZoteroSearchParams = {}): Promise<ZoteroItem[]> {
+  public async getUserLibrary(params: ZoteroSearchParams = {}): Promise<ZoteroItem[]> {
     try {
-      // Ensure we wait for authentication before proceeding
       if (!this.isAuthenticated) {
         await this.authenticate();
       }
-      
+
       const items: ZoteroItem[] = [];
       let currentUrl: string | undefined = this.buildLibraryUrl();
-      
+
       // Add search parameters to URL
       const queryString = buildSearchQueryString({
         ...params,
         limit: params.limit || DEFAULT_PAGE_SIZE,
       });
-      
+
       if (queryString) {
         currentUrl += `?${queryString}`;
       }
-      
+
       console.log(`Starting request with URL: ${currentUrl}`);
-      
+
       while (currentUrl) {
         console.log(`Fetching URL: ${currentUrl}`);
         const response = await this.makeRequest<ZoteroItemsResponse>(currentUrl);
-        
+
         // Safely extract data - handle potential undefined/null data
         if (response && response.data && Array.isArray(response.data)) {
           console.log(`Adding ${response.data.length} items from response`);
-          
-          // Process each item to ensure it has the correct structure
-          const processedItems = response.data.map(item => {
-            // If item doesn't have expected structure, skip it
-            if (!item || typeof item !== 'object') {
-              console.warn('Skipping invalid item:', item);
-              return null;
-            }
 
-            // Deep clone just to be safe and prevent unintended mutations
-            const normalizedItem: ZoteroItem = {
-              key: item.key,
-              version: item.version,
-              library: item.library,
-              links: item.links,
-              meta: item.meta,
-              data: item.data // Just pass through the data directly
-            };
-            
-            // Add detailed logging for a complete debugging picture
-            console.log('ITEM DATA DEBUG:');
-            console.log('- Item key:', normalizedItem.key);
-            console.log('- Data exists:', !!normalizedItem.data);
-            if (normalizedItem.data) {
-              console.log('- Title:', normalizedItem.data.title);
-              console.log('- Creator count:', normalizedItem.data.creators?.length || 0);
-              if (normalizedItem.data.creators?.length > 0) {
-                console.log('- First creator:', JSON.stringify(normalizedItem.data.creators[0]));
+          // Process each item to ensure it has the correct structure
+          const processedItems = response.data
+            .map((item) => {
+              // If item doesn't have expected structure, skip it
+              if (!item || typeof item !== "object") {
+                console.warn("Skipping invalid item:", item);
+                return null;
               }
-              console.log('- Date:', normalizedItem.data.date);
-              console.log('- Item type:', normalizedItem.data.itemType);
-            }
-            
-            return normalizedItem;
-          }).filter(Boolean) as ZoteroItem[]; // Remove any null items
-          
+
+              // Deep clone just to be safe and prevent unintended mutations
+              const normalizedItem: ZoteroItem = {
+                key: item.key,
+                version: item.version,
+                library: item.library,
+                links: item.links,
+                meta: item.meta,
+                data: item.data, // Just pass through the data directly
+              };
+
+              // Add detailed logging for a complete debugging picture
+              console.log("ITEM DATA DEBUG:");
+              console.log("- Item key:", normalizedItem.key);
+              console.log("- Data exists:", !!normalizedItem.data);
+              if (normalizedItem.data) {
+                console.log("- Title:", normalizedItem.data.title);
+                console.log("- Creator count:", normalizedItem.data.creators?.length || 0);
+                if (normalizedItem.data.creators?.length > 0) {
+                  console.log("- First creator:", JSON.stringify(normalizedItem.data.creators[0]));
+                }
+                console.log("- Date:", normalizedItem.data.date);
+                console.log("- Item type:", normalizedItem.data.itemType);
+              }
+
+              return normalizedItem;
+            })
+            .filter(Boolean) as ZoteroItem[]; // Remove any null items
+
           items.push(...processedItems);
         } else {
-          console.warn('Response data is not an array or is missing');
+          console.warn("Response data is not an array or is missing");
         }
-        
+
         // Check if there's a next page
         currentUrl = this.getNextPageUrl(response?.links);
-        console.log(`Next page URL: ${currentUrl || 'none'}`);
-        
+        console.log(`Next page URL: ${currentUrl || "none"}`);
+
         // If we have a limit and we've reached it, stop
         if (params.limit && items.length >= params.limit) {
           console.log(`Reached limit of ${params.limit} items, trimming`);
@@ -343,26 +383,29 @@ export class ZoteroService {
           break;
         }
       }
-      
+
       console.log(`Returning ${items.length} total items`);
-      
+
       // Add one more debug before returning
       if (items.length > 0) {
-        console.log('First returned item structure:', JSON.stringify(items[0]).substring(0, 500) + '...');
+        console.log(
+          "First returned item structure:",
+          JSON.stringify(items[0]).substring(0, 500) + "...",
+        );
       }
-      
+
       return items;
     } catch (error) {
-      console.error('Error in getUserLibrary:', error);
-      
+      console.error("Error in getUserLibrary:", error);
+
       // If we get an authentication error, try to re-authenticate once
       if (error instanceof ZoteroAuthenticationError) {
-        console.log('Authentication error, trying to re-authenticate');
+        console.log("Authentication error, trying to re-authenticate");
         this.isAuthenticated = false;
         await this.authenticate();
         return this.getUserLibrary(params);
       }
-      
+
       throw this.handleError(error);
     }
   }
@@ -373,11 +416,14 @@ export class ZoteroService {
    * @param params Additional search parameters
    * @returns A promise that resolves to an array of matching Zotero items
    */
-  async searchItems(query: string, params: Omit<ZoteroSearchParams, 'q'> = {}): Promise<ZoteroItem[]> {
+  public async searchItems(
+    query: string,
+    params: Omit<ZoteroSearchParams, "q"> = {},
+  ): Promise<ZoteroItem[]> {
     return this.getUserLibrary({
       ...params,
       q: query,
-      qmode: params.qmode || 'everything',
+      qmode: params.qmode || "everything",
     });
   }
 
@@ -408,32 +454,44 @@ export class ZoteroService {
       // Get response text first for debugging
       const responseText = await response.text();
       console.log(`Raw API response (first 300 chars): ${responseText.substring(0, 300)}...`);
-      
+
       // Parse the JSON manually
       let responseData;
       try {
         responseData = JSON.parse(responseText);
       } catch (e) {
-        console.error('Failed to parse JSON response:', e);
-        throw new ZoteroApiError(`Invalid JSON response: ${e instanceof Error ? e.message : 'Unknown error'}`);
+        console.error("Failed to parse JSON response:", e);
+        throw new ZoteroApiError(
+          `Invalid JSON response: ${e instanceof Error ? e.message : "Unknown error"}`,
+        );
       }
-      
-      console.log(`Response type: ${Array.isArray(responseData) ? 'Array' : typeof responseData}`);
-      if (typeof responseData === 'object' && responseData) {
-        console.log(`Has data property: ${responseData && 'data' in responseData}`);
+
+      console.log(`Response type: ${Array.isArray(responseData) ? "Array" : typeof responseData}`);
+      if (typeof responseData === "object" && responseData) {
+        console.log(`Has data property: ${responseData && "data" in responseData}`);
       }
 
       // Detailed debug of the first item if it's an array
       if (Array.isArray(responseData) && responseData.length > 0) {
-        console.log('First item in response:', JSON.stringify(responseData[0]).substring(0, 500) + '...');
+        console.log(
+          "First item in response:",
+          JSON.stringify(responseData[0]).substring(0, 500) + "...",
+        );
       }
 
       // Inside makeRequest method after parsing responseData
-      console.log('Raw API response structure:', JSON.stringify(responseData, null, 2).substring(0, 500) + '...');
+      console.log(
+        "Raw API response structure:",
+        JSON.stringify(responseData, null, 2).substring(0, 500) + "...",
+      );
 
       // Now transform based on what we received
-      let transformed: any;
-      
+      let transformed: Record<string, unknown> = {
+        data: [],
+        links: {},
+        meta: { numResults: 0 },
+      };
+
       if (Array.isArray(responseData)) {
         console.log(`Transforming array of ${responseData.length} items into data structure`);
         // Convert to expected format with data property
@@ -441,47 +499,54 @@ export class ZoteroService {
           data: responseData,
           links: this.parseLinkHeader(response.headers.link),
           meta: {
-            numResults: responseData.length
-          }
+            numResults: responseData.length,
+          },
         };
-      } else if (responseData && typeof responseData === 'object') {
-        if ('data' in responseData && Array.isArray(responseData.data)) {
+      } else if (responseData && typeof responseData === "object") {
+        if ("data" in responseData && Array.isArray(responseData.data)) {
           // Already has a data property that's an array, use as is
-          console.log('Response already has data array property');
+          console.log("Response already has data array property");
           transformed = responseData;
         } else {
           // Object without a data property or with non-array data
-          console.log('Wrapping object in data array property');
+          console.log("Wrapping object in data array property");
           transformed = {
-            data: 'data' in responseData ? responseData.data !== null ? 
-              (Array.isArray(responseData.data) ? responseData.data : [responseData.data]) : 
-              [responseData.data] : 
-              [responseData],
-            links: 'links' in responseData ? responseData.links : this.parseLinkHeader(response.headers.link),
-            meta: 'meta' in responseData ? responseData.meta : { numResults: 1 }
+            data:
+              "data" in responseData
+                ? responseData.data !== null
+                  ? Array.isArray(responseData.data)
+                    ? responseData.data
+                    : [responseData.data]
+                  : [responseData.data]
+                : [responseData],
+            links:
+              "links" in responseData
+                ? responseData.links
+                : this.parseLinkHeader(response.headers.link),
+            meta: "meta" in responseData ? responseData.meta : { numResults: 1 },
           };
         }
       } else {
         // Primitive value or null - this shouldn't normally happen
-        console.error('Unexpected response type:', responseData);
+        console.error("Unexpected response type:", responseData);
         transformed = {
           data: [],
           links: {},
-          meta: { numResults: 0 }
+          meta: { numResults: 0 },
         };
       }
-      
+
       // Ensure data property exists and is array
       if (!transformed.data || !Array.isArray(transformed.data)) {
-        console.error('Transformed response data is not an array:', transformed);
+        console.error("Transformed response data is not an array:", transformed);
         transformed.data = [];
       }
-      
+
       console.log(`Transformed response has ${transformed.data.length} items in data array`);
-      
+
       return transformed as T;
     } catch (error) {
-      console.error('Error in makeRequest:', error);
+      console.error("Error in makeRequest:", error);
       throw this.handleError(error);
     }
   }
@@ -496,15 +561,15 @@ export class ZoteroService {
     if (!linkHeader) return links;
 
     // Split parts by comma
-    const parts = linkHeader.split(',');
+    const parts = linkHeader.split(",");
     for (const part of parts) {
       // Split into section and direction
-      const section = part.split(';');
+      const section = part.split(";");
       if (section.length < 2) continue;
-      
+
       const urlMatch = section[0].match(/<(.+)>/);
       const relMatch = section[1].match(/rel="?([^"]+)"?/);
-      
+
       if (urlMatch && relMatch) {
         const url = urlMatch[1];
         const rel = relMatch[1];
@@ -534,7 +599,7 @@ export class ZoteroService {
     if (this.groupId) {
       return buildGroupLibraryUrl(this.groupId);
     }
-    throw new ZoteroApiError('No user or group ID configured');
+    throw new ZoteroApiError("No user or group ID configured");
   }
 
   /**
@@ -543,11 +608,11 @@ export class ZoteroService {
    */
   private getHeaders(): Record<string, string> {
     const headers = {
-      'Zotero-API-Version': '3',
-      'Zotero-API-Key': this.apiKey,
-      'Content-Type': 'application/json',
+      "Zotero-API-Version": "3",
+      "Zotero-API-Key": this.apiKey,
+      "Content-Type": "application/json",
     };
-    console.log('Request headers:', headers);
+    console.log("Request headers:", headers);
     return headers;
   }
 
@@ -561,9 +626,9 @@ export class ZoteroService {
       return error;
     }
 
-    if (typeof error === 'object' && error !== null && 'status' in error) {
+    if (typeof error === "object" && error !== null && "status" in error) {
       const status = (error as { status: number }).status;
-      
+
       if (status === 401) {
         return new ZoteroAuthenticationError();
       }
@@ -575,9 +640,7 @@ export class ZoteroService {
       }
     }
 
-    return new ZoteroApiError(
-      error instanceof Error ? error.message : 'An unknown error occurred'
-    );
+    return new ZoteroApiError(error instanceof Error ? error.message : "An unknown error occurred");
   }
 
   /**
@@ -586,7 +649,32 @@ export class ZoteroService {
    */
   private ensureAuthenticated(): void {
     if (!this.isAuthenticated) {
-      throw new ZoteroAuthenticationError('Not authenticated. Call authenticate() first.');
+      throw new ZoteroAuthenticationError("Not authenticated. Call authenticate() first.");
     }
   }
-} 
+}
+
+// Replace line ~18 with a proper type instead of 'any'
+export type ZoteroResponse<T> = {
+  status: number;
+  data: T;
+  headers?: Record<string, string>;
+};
+
+// Fix async Promise executor (line ~171)
+return new Promise((resolve, reject) => {
+  const fetchAsync = async () => {
+    try {
+      // Async code here
+      const result = await someAsyncOperation();
+      resolve(result);
+    } catch (error) {
+      reject(error);
+    }
+  };
+
+  fetchAsync();
+});
+
+// Replace line ~435 with a proper type instead of 'any'
+export type ZoteroDataType = ZoteroItem | ZoteroCollection | unknown;

@@ -1,11 +1,6 @@
-import { showToast, Toast, LocalStorage, getPreferenceValues } from "@raycast/api";
 import { useEffect, useState } from "react";
 import Zotero, { ZoteroItem } from "./utils/Zotero";
 import CitationList from "./components/CitationList";
-
-interface Preferences {
-  useLocalDatabase?: boolean;
-}
 
 export default function Command() {
   const [isLoading, setIsLoading] = useState(true);
@@ -26,9 +21,9 @@ export default function Command() {
         setIsLoading(false);
       }
     }
-    
+
     fetchData();
   }, []);
 
   return <CitationList items={items} isLoading={isLoading} error={error} />;
-} 
+}
