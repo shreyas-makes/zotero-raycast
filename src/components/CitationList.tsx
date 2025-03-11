@@ -1,231 +1,29 @@
-import { List, ActionPanel, Action, Icon, Toast, showToast, Clipboard } from "@raycast/api";
+import { List, ActionPanel, Action, Icon, Toast, showToast, Clipboard, Color } from "@raycast/api";
 import { useEffect, useState } from "react";
-import { ZoteroItem } from "../types/zoteroItems";
-import { ZoteroService } from "../services/zotero/ZoteroService";
-import { ZoteroApiError, ZoteroAuthenticationError, ZoteroRateLimitError } from "../services/zotero/errors";
-import { getZoteroPreferences } from "../preferences";
+import { ZoteroItem } from "../background";
 
-interface State {
-  isLoading: boolean;
-  searchText: string;
-  items: ZoteroItem[];
-  error?: Error;
+interface CitationListProps {
+  items?: ZoteroItem[];
+  isLoading?: boolean;
+  error?: string | null;
 }
 
-export default function CitationList() {
-  const preferences = getZoteroPreferences();
-  const [state, setState] = useState<State>({
-    isLoading: true,
+export default function CitationList({ items = [], isLoading = false, error = null }: CitationListProps) {
+  const [state, setState] = useState<{
+    isLoading: boolean;
+    searchText: string;
+    items: ZoteroItem[];
+    error: string | null;
+  }>({
+    isLoading: isLoading,
     searchText: "",
-    items: [],
+    items: items,
+    error: error,
   });
 
-  // Get the singleton instance of ZoteroService
-  const getZoteroService = () => {
-    return ZoteroService.getInstance({
-      apiKey: preferences.apiKey,
-      userId: preferences.userId,
-    });
-  };
-
   useEffect(() => {
-    initializeService();
-  }, []);
-
-  useEffect(() => {
-    if (state.searchText) {
-      searchItems();
-    } else {
-      loadLibrary();
-    }
-  }, [state.searchText]);
-
-  async function initializeService() {
-    try {
-      const zoteroService = getZoteroService();
-      await zoteroService.authenticate();
-      await loadLibrary();
-    } catch (error) {
-      handleError(error);
-    }
-  }
-
-  async function loadLibrary() {
-    try {
-      setState((prev) => ({ ...prev, isLoading: true }));
-      const zoteroService = getZoteroService();
-      const items = await zoteroService.getUserLibrary();
-      
-      // Filter to only show journal articles
-      const filteredItems = items.filter(item => 
-        item.data?.itemType === "journalArticle"
-      );
-      
-      console.log(`Filtered ${items.length} total items to ${filteredItems.length} journal articles`);
-      
-      setState((prev) => ({ 
-        ...prev, 
-        items: filteredItems, 
-        isLoading: false, 
-        error: undefined 
-      }));
-    } catch (error) {
-      handleError(error);
-    }
-  }
-
-  async function searchItems() {
-    try {
-      setState((prev) => ({ ...prev, isLoading: true }));
-      const zoteroService = getZoteroService();
-      const items = await zoteroService.searchItems(state.searchText);
-      setState((prev) => ({ ...prev, items, isLoading: false, error: undefined }));
-    } catch (error) {
-      handleError(error);
-    }
-  }
-
-  function handleError(error: unknown) {
-    setState((prev) => ({ ...prev, isLoading: false }));
-    
-    if (error instanceof ZoteroAuthenticationError) {
-      showToast({
-        style: Toast.Style.Failure,
-        title: "Authentication Failed",
-        message: "Please check your API key and user ID in preferences. Make sure to use your numeric user ID from Zotero settings.",
-        primaryAction: {
-          title: "Open Preferences",
-          onAction: () => {
-            showToast({
-              style: Toast.Style.Success,
-              title: "Opening Preferences...",
-              message: "Enter your numeric user ID (e.g., 6537753) and API key"
-            });
-          }
-        }
-      });
-
-      setState((prev) => ({
-        ...prev,
-        error: new Error(
-          "Authentication failed. Please verify:\n\n" +
-          "1. Your numeric user ID (from Zotero settings/keys)\n" +
-          "2. Your 24-character API key\n" +
-          "3. API key has 'Allow library access' enabled"
-        )
-      }));
-    } else if (error instanceof ZoteroRateLimitError) {
-      showToast({
-        style: Toast.Style.Failure,
-        title: "Too Many Requests",
-        message: "Please try again in a moment",
-      });
-      setState((prev) => ({
-        ...prev,
-        error: new Error("Rate limit exceeded. Please wait a moment and try again.")
-      }));
-    } else {
-      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
-      showToast({
-        style: Toast.Style.Failure,
-        title: "Error",
-        message: errorMessage,
-      });
-      setState((prev) => ({
-        ...prev,
-        error: new Error(errorMessage)
-      }));
-    }
-  }
-
-  function formatAuthors(item: ZoteroItem): string {
-    console.log('formatAuthors - Item data:', item.data);
-    
-    // Basic safety check
-    if (!item.data?.creators || !Array.isArray(item.data.creators) || item.data.creators.length === 0) {
-      console.log('formatAuthors - No valid creators found');
-      return "No authors";
-    }
-
-    // Filter for authors and format them
-    const authors = item.data.creators
-      .filter(creator => creator.creatorType === "author")
-      .map(author => {
-        // Handle different author formats
-        if (author.name) {
-          return author.name;
-        }
-        // Handle cases where either firstName or lastName might be missing
-        return [author.lastName, author.firstName].filter(Boolean).join(', ');
-      });
-
-    console.log('formatAuthors - Processed authors:', authors);
-
-    if (authors.length === 0) {
-      return "No authors";
-    }
-
-    if (authors.length === 1) {
-      return authors[0] || "Unknown Author";
-    }
-
-    if (authors.length === 2) {
-      return `${authors[0] || "Unknown"} & ${authors[1] || "Unknown"}`;
-    }
-
-    return `${authors[0] || "Unknown"} et al.`;
-  }
-
-  function formatInTextCitation(item: ZoteroItem): string {
-    console.log('formatInTextCitation - Item:', JSON.stringify(item).substring(0, 300));
-    
-    // Safely access data with defaults
-    if (!item.data) {
-      console.log('formatInTextCitation - No data property');
-      return "(Unknown, n.d.)";
-    }
-    
-    // Get author(s)
-    const authors = item.data.creators?.filter(c => c.creatorType === "author") || [];
-    const firstName = authors[0]?.lastName || "Unknown";
-    
-    // Get year
-    const year = item.data.date ? item.data.date.substring(0, 4) : "n.d.";
-    
-    console.log(`formatInTextCitation - Using author: ${firstName}, year: ${year}`);
-    
-    // Build citation
-    if (authors.length <= 1) {
-      return `(${firstName}, ${year})`;
-    }
-    
-    return `(${firstName} et al., ${year})`;
-  }
-
-  function formatBibliographyEntry(item: ZoteroItem): string {
-    console.log('formatBibliographyEntry - Item:', JSON.stringify(item).substring(0, 300));
-    
-    // Safely access data with defaults
-    if (!item.data) {
-      console.log('formatBibliographyEntry - No data property');
-      return "Unknown. (n.d.). Untitled.";
-    }
-    
-    // Get authors
-    const authorsArray = item.data.creators?.filter(c => c.creatorType === "author") || [];
-    const authors = authorsArray.length > 0 
-      ? authorsArray.map(a => `${a.lastName || "Unknown"}, ${a.firstName ? a.firstName.charAt(0) + "." : ""}`).join(", ")
-      : "Unknown";
-    
-    // Get other fields
-    const year = item.data.date ? item.data.date.substring(0, 4) : "n.d.";
-    const title = item.data.title || "Untitled";
-    
-    console.log(`formatBibliographyEntry - Using authors: ${authors}, year: ${year}, title: ${title}`);
-    
-    // Return simple bibliography entry for initial testing
-    return `${authors} (${year}). ${title}.`;
-  }
+    setState(prev => ({ ...prev, items, isLoading, error }));
+  }, [items, isLoading, error]);
 
   async function copyToClipboard(text: string, description: string) {
     try {
@@ -250,112 +48,157 @@ export default function CitationList() {
     }
   }
 
-  // Add this before the return statement
-  useEffect(() => {
-    if (state.items.length > 0) {
-      const firstItem = state.items[0];
-      console.log('DETAILED CITATION ITEM ANALYSIS:');
-      console.log('- Item key:', firstItem.key);
-      console.log('- Data property exists:', !!firstItem.data);
-      if (firstItem.data) {
-        console.log('- Title:', firstItem.data.title);
-        console.log('- Item type:', firstItem.data.itemType);
-        console.log('- Date:', firstItem.data.date);
-        console.log('- Creators exist:', !!firstItem.data.creators);
-        console.log('- Creator count:', firstItem.data.creators?.length || 0);
-        if (firstItem.data.creators?.length > 0) {
-          console.log('- First creator:', JSON.stringify(firstItem.data.creators[0]));
-        }
-        console.log('- Publication:', firstItem.data.publicationTitle);
-      }
+  function formatInTextCitation(item: ZoteroItem): string {
+    if (!item.data) {
+      return "(Unknown, n.d.)";
     }
-  }, [state.items]);
+    
+    const authors = item.data.creators?.filter(c => c.creatorType === "author") || [];
+    const firstName = authors[0]?.lastName || "Unknown";
+    const year = item.data.date ? item.data.date.substring(0, 4) : "n.d.";
+    
+    return authors.length <= 1 ? `(${firstName}, ${year})` : `(${firstName} et al., ${year})`;
+  }
+
+  function formatBibliographyEntry(item: ZoteroItem): string {
+    if (!item.data) {
+      return "Unknown. (n.d.). Untitled.";
+    }
+    
+    const authors = item.data.creators?.filter(c => c.creatorType === "author") || [];
+    const authorString = authors.length > 0 
+      ? authors.map(a => `${a.lastName || "Unknown"}, ${a.firstName ? a.firstName.charAt(0) + "." : ""}`).join(", ")
+      : "Unknown";
+    
+    const year = item.data.date ? item.data.date.substring(0, 4) : "n.d.";
+    const title = item.data.title || "Untitled";
+    const publication = item.data.publicationTitle ? `. ${item.data.publicationTitle}` : "";
+    
+    return `${authorString} (${year}). ${title}${publication}.`;
+  }
+
+  function getAuthorsDisplay(item: ZoteroItem): string {
+    if (!item.data || !item.data.creators || item.data.creators.length === 0) {
+      return "Unknown Author";
+    }
+    
+    const authors = item.data.creators.filter(c => c.creatorType === "author");
+    
+    if (authors.length === 0) {
+      return "Unknown Author";
+    }
+    
+    if (authors.length === 1) {
+      const author = authors[0];
+      return `${author.lastName || ""}${author.firstName ? `, ${author.firstName}` : ""}`.trim();
+    }
+    
+    if (authors.length === 2) {
+      return `${authors[0].lastName} & ${authors[1].lastName}`;
+    }
+    
+    return `${authors[0].lastName} et al.`;
+  }
+
+  const filteredItems = state.searchText
+    ? state.items.filter(item => {
+        const title = item.data?.title?.toLowerCase() || "";
+        const searchLower = state.searchText.toLowerCase();
+        const creatorMatch = item.data?.creators?.some(creator => {
+          const fullName = `${creator.firstName || ""} ${creator.lastName || ""}`.toLowerCase();
+          return fullName.includes(searchLower);
+        });
+        
+        return title.includes(searchLower) || creatorMatch;
+      })
+    : state.items;
 
   return (
     <List
       isLoading={state.isLoading}
       onSearchTextChange={(text) => setState((prev) => ({ ...prev, searchText: text }))}
-      searchBarPlaceholder="Search your Zotero library..."
+      searchBarPlaceholder="Search by title or author..."
       throttle
     >
       {state.error ? (
         <List.EmptyView
-          icon={Icon.ExclamationMark}
-          title="Error"
-          description={state.error.message}
-          actions={
-            <ActionPanel>
-              <Action
-                title="Try Again"
-                icon={Icon.ArrowClockwise}
-                onAction={state.searchText ? searchItems : loadLibrary}
-              />
-            </ActionPanel>
-          }
+          icon={{ source: Icon.Warning, tintColor: Color.Red }}
+          title="Error loading citations"
+          description={state.error}
         />
-      ) : state.items.length === 0 ? (
+      ) : filteredItems.length === 0 ? (
         <List.EmptyView
           icon={Icon.MagnifyingGlass}
-          title={state.searchText ? "No matching journal articles found" : "No journal articles in your library"}
-          description={state.searchText 
-            ? "Try a different search term or add more journal articles to your Zotero library" 
-            : "Only journal articles are displayed. Add articles to your Zotero library to see them here."}
+          title="No items found"
+          description={state.searchText ? "Try a different search term" : "Your library appears to be empty"}
         />
       ) : (
-        state.items.map((item) => {
-          // Authors are in data.creators
-          const authors = item.data?.creators 
-            ? item.data.creators
-                .filter(c => c.creatorType === "author")
-                .map(c => `${c.lastName || ''}${c.firstName ? `, ${c.firstName}` : ''}`.trim())
-                .join('; ')
-            : 'Unknown Author';
-          
-          // Date is in data.date
-          const date = item.data?.date 
-            ? item.data.date.substring(0, 4) // Get just the year
-            : 'No Date';
-          
-          // Publication info
-          const publication = item.data?.publicationTitle || 
-                              item.data?.journalAbbreviation || 
-                              'Unknown Journal';
-          
-          return (
-            <List.Item
-              key={item.key}
-              title={item.data?.title || 'Untitled Article'}
-              subtitle={authors}
-              accessories={[
-                { text: date, tooltip: `Published: ${item.data?.date || 'Unknown date'}` },
-                { text: publication, tooltip: 'Journal' }
-              ]}
-              actions={
-                <ActionPanel>
-                  <ActionPanel.Section>
-                    <Action
-                      title="Copy Bibliography Entry"
-                      icon={Icon.TextDocument}
-                      onAction={() => {
-                        const bibliography = formatBibliographyEntry(item);
-                        copyToClipboard(bibliography, "Bibliography entry copied to clipboard");
-                      }}
-                    />
-                    <Action
-                      title="Copy Citation"
-                      icon={Icon.Text}
-                      onAction={() => {
-                        const citation = formatInTextCitation(item);
-                        copyToClipboard(citation, "Citation copied to clipboard");
-                      }}
-                    />
-                  </ActionPanel.Section>
-                </ActionPanel>
+        filteredItems.map((item) => (
+          <List.Item
+            key={item.key}
+            icon={getItemTypeIcon(item.data?.itemType)}
+            title={item.data?.title || "Untitled"}
+            subtitle={getAuthorsDisplay(item)}
+            accessories={[
+              { 
+                tag: { value: item.data?.date ? item.data.date.substring(0, 4) : "n.d.", color: Color.Blue },
+                tooltip: `Published: ${item.data?.date || "Unknown date"}` 
+              },
+              { 
+                icon: item.data?.publicationTitle ? Icon.Book : undefined,
+                text: item.data?.publicationTitle ? ellipsizeText(item.data.publicationTitle, 30) : undefined,
+                tooltip: "Publication"
               }
-            />
-          );
-        })
+            ]}
+            actions={
+              <ActionPanel>
+                <ActionPanel.Section>
+                  <Action
+                    title="Copy APA Bibliography Entry"
+                    icon={Icon.TextDocument}
+                    shortcut={{ modifiers: ["cmd"], key: "b" }}
+                    onAction={() => {
+                      const bibliography = formatBibliographyEntry(item);
+                      copyToClipboard(bibliography, "Bibliography entry copied to clipboard");
+                    }}
+                  />
+                  <Action
+                    title="Copy In-Text Citation"
+                    icon={Icon.Text}
+                    shortcut={{ modifiers: ["cmd"], key: "c" }}
+                    onAction={() => {
+                      const citation = formatInTextCitation(item);
+                      copyToClipboard(citation, "Citation copied to clipboard");
+                    }}
+                  />
+                </ActionPanel.Section>
+              </ActionPanel>
+            }
+          />
+        ))
       )}
     </List>
   );
+}
+
+function getItemTypeIcon(itemType?: string): Icon {
+  switch (itemType?.toLowerCase()) {
+    case "book":
+      return Icon.Book;
+    case "journalarticle":
+      return Icon.Document;
+    case "conferencepaper":
+      return Icon.Presentation;
+    case "thesis":
+      return Icon.GraduationCap;
+    case "webpage":
+      return Icon.Globe;
+    default:
+      return Icon.Document;
+  }
+}
+
+function ellipsizeText(text: string, maxLength: number): string {
+  if (!text || text.length <= maxLength) return text;
+  return text.substring(0, maxLength - 3) + "...";
 } 

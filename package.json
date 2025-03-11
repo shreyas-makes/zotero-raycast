@@ -17,7 +17,7 @@
     {
       "name": "apiKey",
       "type": "password",
-      "required": true,
+      "required": false,
       "title": "Zotero API Key",
       "description": "Your Zotero API key. You can find this at https://www.zotero.org/settings/keys",
       "placeholder": "Enter your 24-character Zotero API key"
@@ -25,10 +25,19 @@
     {
       "name": "userId",
       "type": "textfield",
-      "required": true,
+      "required": false,
       "title": "Zotero User ID",
       "description": "Your numeric Zotero user ID. Find this at https://www.zotero.org/settings/keys under 'Your user ID for use in API calls'",
       "placeholder": "Enter your numeric user ID (e.g., 6537753)"
+    },
+    {
+      "name": "useLocalDatabase",
+      "type": "checkbox",
+      "required": false,
+      "title": "Use Local Database",
+      "description": "Connect directly to your local Zotero database instead of using the API. Requires Zotero desktop to be installed.",
+      "default": false,
+      "label": "Use Local Zotero Database"
     }
   ],
   "dependencies": {
@@ -36,13 +45,10 @@
   },
   "devDependencies": {
     "@raycast/eslint-config": "^1.0.6",
-    "@types/jest": "^29.5.12",
     "@types/node": "^20.11.0",
     "@types/react": "^18.2.48",
     "eslint": "^8.56.0",
-    "jest": "^29.7.0",
     "prettier": "^3.1.1",
-    "ts-jest": "^29.1.2",
     "typescript": "^5.3.3"
   },
   "scripts": {
@@ -50,14 +56,13 @@
     "dev": "ray develop",
     "fix-lint": "ray lint --fix",
     "lint": "ray lint",
-    "publish": "npx @raycast/api@latest publish",
-    "test": "jest",
-    "test:watch": "jest --watch"
+    "publish": "npx @raycast/api@latest publish"
   },
-  "jest": {
-    "preset": "ts-jest",
-    "testEnvironment": "node",
-    "testMatch": ["**/__tests__/**/*.test.ts"],
-    "moduleFileExtensions": ["ts", "js", "json"]
-  }
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ]
 } 

@@ -9,9 +9,11 @@
 
 type ExtensionPreferences = {
   /** Zotero API Key - Your Zotero API key. You can find this at https://www.zotero.org/settings/keys */
-  "apiKey": string,
+  "apiKey"?: string,
   /** Zotero User ID - Your numeric Zotero user ID. Find this at https://www.zotero.org/settings/keys under 'Your user ID for use in API calls' */
-  "userId": string
+  "userId"?: string,
+  /** Use Local Database - Connect directly to your local Zotero database instead of using the API. Requires Zotero desktop to be installed. */
+  "useLocalDatabase": boolean
 }
 
 /** Preferences accessible in all the extension's commands */
